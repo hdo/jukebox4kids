@@ -1,0 +1,32 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          jukebox
+# Required-Start:    $local_fs
+# Required-Stop:     $local_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: jukebox
+# Description:       Start the jukebox
+### END INIT INFO
+
+JUKEBOX_HOME=/home/pi/pyjukebox
+
+if [ ! -f $JUKEBOX_HOME/pyjukebox.py ]
+then
+    echo "jukebox startup: cannot start"
+    exit
+fi
+
+case "$1" in
+    'start')
+        "$JUKEBOX_HOME/pyjukebox.py" &
+        ;;
+    'stop')
+        killall python
+        ;;
+esac
+
+## sudo update-rc.d jukebox remove
+## sudo update-rc.d jukebox defaults
+## sudo update-rc.d jukebox enable
+
