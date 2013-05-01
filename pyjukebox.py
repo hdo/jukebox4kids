@@ -22,7 +22,8 @@ class Jukebox4Kids:
         self.sleep_mode_ms = 0.0
         self.go_sleep_mode_time_out = 900
         self.go_standby_mode_time_out = 7200
-        self.power_off_amp_time_out = 120
+        #self.power_off_amp_time_out = 120
+        self.power_off_amp_time_out = 30
 
     def get_track_count(self):
         process = subprocess.Popen(['mpc playlist | wc -l'], shell=True, stdout=subprocess.PIPE)
@@ -102,6 +103,10 @@ class Jukebox4Kids:
         self.ser.write(cmd)
         self.ser.flush()
         self.is_sleep_mode = False
+        cmd = '/P:A1\n'
+        self.ser.write(cmd)
+        self.ser.flush()
+
 
     def go_power_off_amp(self):
         cmd = '/P:A0\n'
