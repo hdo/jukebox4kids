@@ -20,7 +20,7 @@ class Jukebox4Kids:
         self.last_activity_check_ms = 0.0
         self.last_activity_ms = 0.0
         self.sleep_mode_ms = 0.0
-        self.go_sleep_mode_time_out = 900
+        self.go_sleep_mode_time_out = 600
         self.go_standby_mode_time_out = 7200
         #self.power_off_amp_time_out = 120
         self.power_off_amp_time_out = 30
@@ -78,6 +78,8 @@ class Jukebox4Kids:
             print "playlist not found!"
 
     def go_sleep(self):
+        if self.is_sleep_mode:
+            return
         os.system("mpc pause")
         cmd = '/l:R1\n'
         self.ser.write(cmd)
@@ -173,11 +175,12 @@ class Jukebox4Kids:
         current_ms = time.time()
         if self.play_status == 2:
             self.last_activity_ms = current_ms
-        elif current_ms - self.last_activity_ms > self.go_sleep_mode_time_out:
+            return
+        if current_ms - self.last_activity_ms > self.go_sleep_mode_time_out:
             # enter sleep
             print "entering sleep mode"
             self.go_sleep()
-        elif current_ms - self.last_activity_ms > self.go_standby_mode_time_out:
+        if current_ms - self.last_activity_ms > self.go_standby_mode_time_out:
             # enter stand-by
             print "entering stand-by mode"
         if self.is_sleep_mode and current_ms - self.sleep_mode_ms > self.power_off_amp_time_out:
@@ -221,6 +224,18 @@ class Jukebox4Kids:
                         # barcode id
                         barcode = string.join(data[3:-1], "")
                         print "receiving barcode: %s" % barcode
+                        if not barcode == current_barcode:
+                            current_barcode = barcode
+                            self.load_playlist(barcode)
+                    if data[1] == 'R' and len(data) > 6:
+                        # barcode id
+                        rfid = string.join(data[3:], "")
+                        print "receiving rfid: %s" % rfid
+                        barcode = rfid
+                        if (rfid == '6911395'):
+                            barcode = '136309014817'
+                        if (rfid == '687220'):
+                            barcode = 'radio'
                         if not barcode == current_barcode:
                             current_barcode = barcode
                             self.load_playlist(barcode)
