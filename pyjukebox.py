@@ -13,6 +13,7 @@ class Jukebox4Kids:
 
     def __init__(self):
         self.playlist_dir = "/var/lib/mpd/playlists"
+        self.rfid_map_file = "rfidmap.properties"
         self.track_count = 0
         self.current_track = 1
         self.play_status = 0
@@ -24,6 +25,29 @@ class Jukebox4Kids:
         self.go_standby_mode_time_out = 7200
         #self.power_off_amp_time_out = 120
         self.power_off_amp_time_out = 30
+        self.rfid_map = []
+
+
+    def load_rfid_map(self):
+        print "loading %s" % self.rfid_map_file
+        if not os.path.exists(self.rfid_map_file):
+            print "could not open %s" % self.rfid_map_file
+            return
+        self.rfid_map = []
+        for line in open(self.rfid_map_file, 'r'):
+            data = line.strip()
+            if len(data) > 0:
+                index = data.find('=')
+                if index > 0:
+                    rfid = data[0:index]
+                    barcode = data[index+1:]
+                    self.rfid_map.append((rfid, barcode))
+
+    def get_barcode_by_rfid(rfid):
+        for (rf, bc) in self.rfid_map:
+            if rfid == rf:
+                return bc
+        return
 
     def get_track_count(self):
         process = subprocess.Popen(['mpc playlist | wc -l'], shell=True, stdout=subprocess.PIPE)
@@ -189,6 +213,7 @@ class Jukebox4Kids:
             self.go_power_off_amp()
 
     def run(self):
+        self.load_rfid_map()
         print "connect to serial ..."
         #ser = serial.Serial('/dev/pts/4', 115200, timeout=0)
         self.ser = serial.Serial('/dev/ttyAMA0', 115200, timeout=0)
@@ -232,10 +257,12 @@ class Jukebox4Kids:
                         rfid = string.join(data[3:], "")
                         print "receiving rfid: %s" % rfid
                         barcode = rfid
-                        if (rfid == '6911395'):
+                        if  rfid == '6911395':
                             barcode = '136309014817'
-                        if (rfid == '687220'):
+                        elif rfid == '687220':
                             barcode = 'radio'
+                        else:
+                            barcode = get_barcode_by_rfid(rfid)
                         if not barcode == current_barcode:
                             current_barcode = barcode
                             self.load_playlist(barcode)
