@@ -12,8 +12,7 @@ import re
 class Jukebox4Kids:
 
     def __init__(self):
-        self.playlist_dir = "/var/lib/mpd/playlists"
-        self.rfid_map_file = "rfidmap.properties"
+        self.playlist_dir = "/media/sdcard/playlists"
         self.track_count = 0
         self.current_track = 1
         self.play_status = 0
@@ -25,29 +24,7 @@ class Jukebox4Kids:
         self.go_standby_mode_time_out = 7200
         #self.power_off_amp_time_out = 120
         self.power_off_amp_time_out = 30
-        self.rfid_map = []
 
-
-    def load_rfid_map(self):
-        print "loading %s" % self.rfid_map_file
-        if not os.path.exists(self.rfid_map_file):
-            print "could not open %s" % self.rfid_map_file
-            return
-        self.rfid_map = []
-        for line in open(self.rfid_map_file, 'r'):
-            data = line.strip()
-            if len(data) > 0:
-                index = data.find('=')
-                if index > 0:
-                    rfid = data[0:index]
-                    barcode = data[index+1:]
-                    self.rfid_map.append((rfid, barcode))
-
-    def get_barcode_by_rfid(rfid):
-        for (rf, bc) in self.rfid_map:
-            if rfid == rf:
-                return bc
-        return
 
     def get_track_count(self):
         process = subprocess.Popen(['mpc playlist | wc -l'], shell=True, stdout=subprocess.PIPE)
@@ -213,7 +190,6 @@ class Jukebox4Kids:
             self.go_power_off_amp()
 
     def run(self):
-        self.load_rfid_map()
         print "connect to serial ..."
         #ser = serial.Serial('/dev/pts/4', 115200, timeout=0)
         self.ser = serial.Serial('/dev/ttyAMA0', 115200, timeout=0)
@@ -226,7 +202,7 @@ class Jukebox4Kids:
         self.ser.flush()
         data = []
         parse_data = False
-        current_barcode = ""
+        current_rfid = ""
         self.update_display()
         last_ms = time.time()
         while(1):
@@ -245,27 +221,14 @@ class Jukebox4Kids:
                     if not data[0] == '/':
                         # error
                         print "protocol error, message: %s" % data
-                    if data[1] == 'B' and len(data) > 10:
-                        # barcode id
-                        barcode = string.join(data[3:-1], "")
-                        print "receiving barcode: %s" % barcode
-                        if not barcode == current_barcode:
-                            current_barcode = barcode
-                            self.load_playlist(barcode)
+
                     if data[1] == 'R' and len(data) > 6:
-                        # barcode id
+                        # rfid id
                         rfid = string.join(data[3:], "")
                         print "receiving rfid: %s" % rfid
-                        barcode = rfid
-                        if  rfid == '6911395':
-                            barcode = '136309014817'
-                        elif rfid == '687220':
-                            barcode = 'radio'
-                        else:
-                            barcode = get_barcode_by_rfid(rfid)
-                        if not barcode == current_barcode:
-                            current_barcode = barcode
-                            self.load_playlist(barcode)
+                        if not rfid == current_rfid:
+                            current_rfid = rfid
+                            self.load_playlist(rfid)
                     if data[1] == 'S' and len(data) > 3:
                         button_index = data[3]
                         print "button %s pressed" % button_index
@@ -294,7 +257,7 @@ class Jukebox4Kids:
 
             except Exception as ex:
                 print 'Error: an error occurred during execution: %s' % (ex)
-                current_barcode = ""
+                current_rfid = ""
                 self.current_track = 0
                 self.track_count = 0
         self.ser.close()
